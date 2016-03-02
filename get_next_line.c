@@ -1,52 +1,68 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   get_next_line.c                                    :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: gvillat <marvin@42.fr>                     +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2016/01/24 15:08:21 by gvillat           #+#    #+#             */
-/*   Updated: 2016/01/24 16:16:50 by gvillat          ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
+ #include "get_next_line.h"
 
-#include "get_next_line.h"
-
-static int			ft_dupanddel(char **line, char **save, char **buf, int res)
+static unsigned int ft_strclen(char *save)
 {
-	if (!(*line = ft_strdup(*save)))
-		return (-1);
-	ft_strdel(&*save);
-	ft_strdel(&*buf);
-	if (res == 0 || res == EOF)
-		return (0);
-	return (-1);
+	unsigned int i;
+
+	i = 0;
+	while (save[i] != '\n' && save[i] != '\0')
+		i++;
+	return (i);
+}
+
+static char			*ft_strrejoin(char *s1, char *s2, size_t len)
+{
+	char		*str;
+	int			nb;
+	char		*tmp;
+
+	nb = ft_strlen(s1) + ++len;
+	str =ft_strnew(nb);
+	tmp = str;
+	while (*s1)
+		*str++ = *s1++;
+	while (*s2 && --len > 0)
+		*str++ = *s2++;
+	*str = '\0';
+	return (str - (str - tmp));
+}
+
+static char			*ft_chrandcpy(char *save)
+{
+	if (ft_strchr(save, '\n'))
+	{
+		ft_strcpy(save, ft_strchr(save, '\n') + 1);
+		return(save);
+	}
+	if (ft_strclen(save) > 0)
+	{
+		ft_strcpy(save, ft_strchr(save, '\0'));
+		return (save);
+	}
+	return (NULL);
 }
 
 int					get_next_line(int const fd, char **line)
 {
-	static char		*save = NULL;
-	int				i;
-	char			*buf;
+	static char		*save[256];
+	char			buff[BUFF_SIZE + 1];
+	char			*ptr;
 	int				res;
 
-	i = 0;
-	if (fd < 0 || !line || BUFF_SIZE < 1)
+	if (fd < 0 || BUFF_SIZE < 1 || !line || read(fd, buff, 0) < 0)
 		return (-1);
-	while (i < BUFF_SIZE)
+	if (!(save[fd]) && (save[fd] = ft_strnew(0)) == NULL)
+		return (-1);
+	while (!(ft_strchr(save[fd], '\n')) &&
+			(res = read(fd, buff, BUFF_SIZE)) > 0)
 	{
-		if (!save)
-			save = ft_strnew(2);
-		buf = ft_strnew(2);
-		if ((res = read(fd, buf, 1)) < 0)
-			return (-1);
-		if (*buf != '\n' && (res != 0 || res != EOF))
-			save = ft_strjoin(save, buf);
-		if (*buf == '\n' || res == 0 || res == EOF)
-			return (ft_dupanddel(line, &save, &buf, res));
-		i++;
+		buff[res] = '\0';
+		ptr = save[fd];
+		save[fd] = ft_strrejoin(ptr, buff, res);
+		free(ptr);
 	}
-	if (i == BUFF_SIZE)
-		return (get_next_line(fd, line));
-	return (-1);
+	*line = ft_strsub(save[fd], 0, ft_strclen(save[fd]));
+	if (ft_chrandcpy(save[fd]) == NULL)
+		return (0);
+	return (1);
 }
